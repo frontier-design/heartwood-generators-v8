@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Dot Orbit Generator</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+
+<body>
+
+  <!-- p5 canvas container (full viewport, behind everything) -->
+  <div id="canvasContainer"></div>
+
+  <!-- MODE BAR (above panel) -->
+  <div class="mode-bar" id="modeBar">
+    <button class="mode-btn active" id="modeView" onclick="setMode('view')">View</button>
+    <button class="mode-btn" id="modeMoveField" onclick="setMode('moveField')">Move Field Dots</button>
+    <button class="mode-btn" id="modeMoveCenter" onclick="setMode('moveCenter')">Move Orbit Center</button>
+  </div>
+
+  <!-- PANEL (floating overlay) -->
+  <div class="panel" id="panel">
+
+    <!-- CANVAS -->
+    <div class="section">
+      <div class="section-header" onclick="toggleSection(this)">
+        <span class="section-title">Canvas</span><span class="section-arrow open" aria-hidden="true"></span>
+      </div>
+      <div class="section-body open">
+        <div class="row"><label>Background</label></div>
+        <div class="swatch-row swatch-grid-two-row" id="bgSwatches"></div>
+        <div class="row swatch-custom-row">
+          <input type="color" id="bgColor" value="#f9f9f9" oninput="selectBgColor(this.value)">
+          <span class="swatch-hex" id="bgHex">#f9f9f9</span>
+        </div>
+        <div class="row row-offset"><label>Dot Color</label></div>
+        <div class="swatch-row swatch-grid-two-row" id="dotSwatches"></div>
+        <div class="row swatch-custom-row">
+          <input type="color" id="dotColor" value="#212121" oninput="selectDotColor(this.value)">
+          <span class="swatch-hex" id="dotHex">#212121</span>
+        </div>
+        <div class="row row-offset"><label>Dot Size</label><input type="range" id="dotSize" min="1"
+            max="14" value="5" oninput="syncVal(this,'dotSizeV')"><span class="val" id="dotSizeV">5</span></div>
+      </div>
+    </div>
+
+    <!-- FIELD DOTS -->
+    <div class="section">
+      <div class="section-header" onclick="toggleSection(this)">
+        <span class="section-title">Field Dots</span><span class="section-arrow" aria-hidden="true"></span>
+      </div>
+      <div class="section-body">
+        <div class="row">
+          <label>Enabled</label>
+          <input type="checkbox" id="fieldEnabled" checked>
+        </div>
+        <div id="fieldControls">
+          <div class="row"><label>Density</label>
+            <input type="range" id="fieldDensity" min="0" max="100" value="30"
+              oninput="syncVal(this,'fieldDensityV');regenField()">
+            <span class="val" id="fieldDensityV">30</span>
+          </div>
+          <div class="btn-row">
+            <button onclick="globalSeed=randSeed();regenField()">Randomize</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- DATA -->
+    <div class="section">
+      <div class="section-header" onclick="toggleSection(this)">
+        <span class="section-title">Data</span><span class="section-arrow" aria-hidden="true"></span>
+      </div>
+      <div class="section-body">
+
+        <div class="tab-row">
+          <button class="tab-btn active" id="tabManual" onclick="switchDataTab('manual')">Manual</button>
+          <button class="tab-btn" id="tabCSV" onclick="switchDataTab('csv')">CSV Upload</button>
+          <button class="tab-btn" id="tabPaste" onclick="switchDataTab('paste')">CSV Paste</button>
+        </div>
+
+        <!-- MANUAL -->
+        <div id="dataManual">
+          <div id="manualRows"></div>
+        </div>
+
+        <!-- CSV UPLOAD -->
+        <div id="dataCSV" style="display:none;">
+          <input type="file" id="csvFile" accept=".csv" class="file-input">
+          <div id="csvStatus" class="hint"></div>
+        </div>
+
+        <!-- CSV PASTE -->
+        <div id="dataPaste" style="display:none;">
+          <textarea id="csvPaste"
+            placeholder="Car / truck / van, 8979030&#10;Sustainable transport, 1633765&#10;Other methods, 233970"></textarea>
+          <div class="btn-row"><button onclick="parsePastedCSV()">Apply</button></div>
+        </div>
+
+        <!-- DOT BUDGET -->
+        <div class="budget-section">
+          <div class="orbit-sub budget-title">Dot Budget</div>
+          <div class="row"><label>Total Dots</label>
+            <input type="range" id="dotBudget" min="10" max="2000" value="200"
+              oninput="syncVal(this,'dotBudgetV');recalcDots();redrawAll()">
+            <span class="val" id="dotBudgetV">200</span>
+          </div>
+          <div class="data-summary" id="dataSummary" style="display:none;">
+            <div class="ds-title">Dataset Total</div>
+            <div class="ds-val" id="dsTotalVal">&mdash;</div>
+            <div class="ds-sub" id="dsOrbitCount">&mdash;</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ORBITS -->
+    <div class="section">
+      <div class="section-header" onclick="toggleSection(this)">
+        <span class="section-title">Orbits</span><span class="section-arrow open" aria-hidden="true"></span>
+      </div>
+      <div class="section-body open">
+        <div class="row"><label>Show Orbits</label><input type="checkbox" id="showGuides" onchange="kickLoop()"></div>
+        <div class="row"><label>Shared Center</label>
+          <input type="checkbox" id="sharedCenter" checked onchange="onSharedCenterChange()">
+        </div>
+        <input type="hidden" id="centerX" value="340">
+        <input type="hidden" id="centerY" value="420">
+        <div class="orbit-list-wrap" id="orbitList"></div>
+        <div class="btn-row reshuffle-row">
+          <button onclick="addOrbit()">Add Orbit</button>
+          <button onclick="reshuffleAll()">Reshuffle All</button>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- /panel -->
+
+  <!-- EXPORT DOCK (bottom-right) -->
+  <div class="export-dock" id="exportDock">
+    <button class="export-btn export-primary" onclick="exportSVG()">Save SVG</button>
+    <button class="export-btn" onclick="exportPNG()">Save PNG</button>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/p5@1.9.0/lib/p5.min.js"></script>
+  <script src="script.js"></script>
+</body>
+
+</html>
