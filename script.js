@@ -22,7 +22,10 @@ const DOM_IDS = [
   "dotHex",
   "dotSize",
   "dotBlur",
-  "grainAmount",
+  "bgGrain",
+  "dotGrain",
+  "metaballs",
+  "metaballMerge",
   "showGuides",
   "fieldEnabled",
   "fieldDensity",
@@ -64,6 +67,7 @@ function defaultOrbit(i) {
     clumpCount: 3,
     clumpSize: 28,
     clumpGap: 12,
+    ringPull: 86,
     color: null,
     open: false,
     seed: randSeed(),
@@ -126,6 +130,76 @@ const ease = cubicBezier(0, 0.994, 0.68, 1);
 const dotSpriteCache = new Map();
 let grainCanvas = null;
 let grainOffset = 0;
+
+// dotMask tracks every dot footprint as a solid alpha silhouette (built
+// once per frame during the dot loop). grainScratch is a reusable buffer we
+// fill with tiled grain and then mask by dotMask using destination-in or
+// destination-out, producing a grain layer that only paints the dot region
+// or only paints the background region respectively.
+let dotMaskCanvas = null;
+let dotMaskCtx = null;
+let grainScratchCanvas = null;
+let grainScratchCtx = null;
+
+function ensureDotMaskCanvas() {
+  if (!dotMaskCanvas) {
+    dotMaskCanvas = document.createElement("canvas");
+    dotMaskCtx = dotMaskCanvas.getContext("2d");
+  }
+  if (dotMaskCanvas.width !== W || dotMaskCanvas.height !== H) {
+    dotMaskCanvas.width = W;
+    dotMaskCanvas.height = H;
+  }
+  return dotMaskCtx;
+}
+
+function ensureGrainScratchCanvas() {
+  if (!grainScratchCanvas) {
+    grainScratchCanvas = document.createElement("canvas");
+    grainScratchCtx = grainScratchCanvas.getContext("2d");
+  }
+  if (grainScratchCanvas.width !== W || grainScratchCanvas.height !== H) {
+    grainScratchCanvas.width = W;
+    grainScratchCanvas.height = H;
+  }
+  return grainScratchCtx;
+}
+
+function tileGrain(ctx2, offset) {
+  const tile = grainCanvas.width;
+  const startX = -offset;
+  const startY = -((offset * 13) % tile);
+  for (let y = startY; y < H; y += tile) {
+    for (let x = startX; x < W; x += tile) {
+      ctx2.drawImage(grainCanvas, x, y);
+    }
+  }
+}
+
+// ── METABALLS ──
+// When metaball mode is on, all dots are rendered as solid disks into an
+// off-screen canvas filled with the current background color. Blitting that
+// canvas onto the main canvas through a `blur() contrast()` filter smears
+// nearby dots together and then snaps the soft edges back into hard blobs
+// — the same gooey trick behind the Coding Train sketch this is modelled on
+// (https://editor.p5js.org/codingtrain/sketches/ISPozOLXW).
+let metaballCanvas = null;
+let metaballCtx = null;
+// Cached <feGaussianBlur> node inside the inline SVG goo filter; its
+// stdDeviation is updated each frame to match the Merge slider.
+let metaballFilterBlur = null;
+
+function ensureMetaballCanvas() {
+  if (!metaballCanvas) {
+    metaballCanvas = document.createElement("canvas");
+    metaballCtx = metaballCanvas.getContext("2d");
+  }
+  if (metaballCanvas.width !== W || metaballCanvas.height !== H) {
+    metaballCanvas.width = W;
+    metaballCanvas.height = H;
+  }
+  return metaballCtx;
+}
 
 function hexToRgba(hex, alpha) {
   let h = String(hex).replace("#", "");
@@ -212,6 +286,9 @@ const sketch = (p) => {
 
     cacheDom();
     grainCanvas = createGrainTile();
+    metaballFilterBlur = document.querySelector(
+      "#metaballFilter feGaussianBlur",
+    );
 
     dom.centerX.value = Math.round(W / 2);
     dom.centerY.value = Math.round(H / 2);
@@ -270,9 +347,41 @@ const sketch = (p) => {
 
     const ctx = p.drawingContext;
     const blurAmt = +dom.dotBlur.value / 100;
-    const fieldSprite = getDotSprite(dotColor, dotD, blurAmt);
     const fieldMode = mode === "moveField";
-    p.noStroke();
+    const metaballsOn = dom.metaballs.checked;
+    const r = dotD / 2;
+
+    const bgGrainAmt = +dom.bgGrain.value / 100;
+    const dotGrainAmt = +dom.dotGrain.value / 100;
+    const needsMask =
+      !!grainCanvas && (bgGrainAmt > 0.001 || dotGrainAmt > 0.001);
+
+    let maskCtx = null;
+    if (needsMask) {
+      maskCtx = ensureDotMaskCanvas();
+      maskCtx.globalCompositeOperation = "source-over";
+      maskCtx.clearRect(0, 0, W, H);
+      maskCtx.fillStyle = "#000";
+      maskCtx.beginPath();
+    }
+
+    let mctx = null;
+    if (metaballsOn) {
+      mctx = ensureMetaballCanvas();
+      // Transparent base — the SVG goo filter only needs the colored dot
+      // shapes; the main canvas's background shows through where blobs
+      // aren't, so colors match exactly between modes.
+      mctx.globalCompositeOperation = "source-over";
+      mctx.clearRect(0, 0, W, H);
+      mctx.fillStyle = dotColor;
+      mctx.beginPath();
+    }
+
+    const fieldSprite = metaballsOn
+      ? null
+      : getDotSprite(dotColor, dotD, blurAmt);
+    if (!metaballsOn) p.noStroke();
+
     for (let fi = 0; fi < fieldDots.length; fi++) {
       const d = fieldDots[fi];
       if (d !== dragDot) stepDot(d);
@@ -280,61 +389,123 @@ const sketch = (p) => {
       const oy = Math.cos(t * 0.3 + fi * 2.3) * drift;
       const dx = d.x + ox;
       const dy = d.y + oy;
-      if (fieldMode) {
-        p.noFill();
-        p.stroke(255, 0, 0);
-        p.strokeWeight(1);
-        p.circle(dx, dy, dotD + 6);
-        p.noStroke();
+
+      if (metaballsOn) {
+        mctx.moveTo(dx + r, dy);
+        mctx.arc(dx, dy, r, 0, Math.PI * 2);
+      } else {
+        if (fieldMode) {
+          p.noFill();
+          p.stroke(255, 0, 0);
+          p.strokeWeight(1);
+          p.circle(dx, dy, dotD + 6);
+          p.noStroke();
+        }
+        ctx.drawImage(
+          fieldSprite.canvas,
+          dx - fieldSprite.half,
+          dy - fieldSprite.half,
+        );
       }
-      ctx.drawImage(
-        fieldSprite.canvas,
-        dx - fieldSprite.half,
-        dy - fieldSprite.half,
-      );
+      if (needsMask) {
+        maskCtx.moveTo(dx + r, dy);
+        maskCtx.arc(dx, dy, r, 0, Math.PI * 2);
+      }
     }
+    if (metaballsOn) mctx.fill();
 
     let di = 0;
     for (const orb of orbits) {
-      const sprite = getDotSprite(orb.color || dotColor, dotD, blurAmt);
+      const orbColor = orb.color || dotColor;
+      const sprite = metaballsOn ? null : getDotSprite(orbColor, dotD, blurAmt);
+      if (metaballsOn) {
+        mctx.fillStyle = orbColor;
+        mctx.beginPath();
+      }
       for (let j = 0; j < orb.dots.length; j++) {
         const d = orb.dots[j];
         stepDot(d);
         const ox = Math.sin(t * 0.5 + di * 1.3) * drift;
         const oy = Math.cos(t * 0.35 + di * 1.9) * drift;
-        ctx.drawImage(
-          sprite.canvas,
-          d.x + ox - sprite.half,
-          d.y + oy - sprite.half,
-        );
+        const dx = d.x + ox;
+        const dy = d.y + oy;
+        if (metaballsOn) {
+          mctx.moveTo(dx + r, dy);
+          mctx.arc(dx, dy, r, 0, Math.PI * 2);
+        } else {
+          ctx.drawImage(sprite.canvas, dx - sprite.half, dy - sprite.half);
+        }
+        if (needsMask) {
+          maskCtx.moveTo(dx + r, dy);
+          maskCtx.arc(dx, dy, r, 0, Math.PI * 2);
+        }
         di++;
       }
+      if (metaballsOn) mctx.fill();
+    }
+
+    if (needsMask) maskCtx.fill();
+
+    if (metaballsOn) {
+      // Blit the colored dot scene through the SVG goo filter. The filter
+      // blurs alpha and snaps it to a binary edge while leaving RGB alone,
+      // so blob colors stay true to the source dots and merging regions
+      // show a clean blend of neighboring colors.
+      const merge = +dom.metaballMerge.value;
+      if (metaballFilterBlur) {
+        metaballFilterBlur.setAttribute("stdDeviation", String(merge));
+      }
+      ctx.save();
+      ctx.filter = "url(#metaballFilter)";
+      ctx.drawImage(metaballCanvas, 0, 0);
+      ctx.restore();
     }
 
     if (dragDot && mode === "moveField") {
       p.noFill();
-      p.stroke(255, 166);
+      p.stroke(metaballsOn ? 0 : 255, 166);
       p.strokeWeight(1.5);
       p.circle(dragDot.x, dragDot.y, dotD + 7);
     }
 
-    // Film-grain overlay: tile a small noise canvas across the frame with a
-    // soft-light blend. Slight per-frame jitter keeps it from looking static.
-    const grainAmt = +dom.grainAmount.value / 100;
-    if (grainCanvas && grainAmt > 0.001) {
-      ctx.save();
-      ctx.globalCompositeOperation = "soft-light";
-      ctx.globalAlpha = grainAmt;
+    // Film-grain overlay: tile a noise canvas across the frame with a
+    // soft-light blend, twice — once masked to the background (everything
+    // except dot footprints) and once masked to the dots themselves — so
+    // each region can be tuned independently. Slight per-frame jitter keeps
+    // the texture alive.
+    if (grainCanvas && (bgGrainAmt > 0.001 || dotGrainAmt > 0.001)) {
       const tile = grainCanvas.width;
       grainOffset = (grainOffset + 7) % tile;
-      const startX = -grainOffset;
-      const startY = -((grainOffset * 13) % tile);
-      for (let y = startY; y < H; y += tile) {
-        for (let x = startX; x < W; x += tile) {
-          ctx.drawImage(grainCanvas, x, y);
-        }
+
+      if (bgGrainAmt > 0.001) {
+        const sctx = ensureGrainScratchCanvas();
+        sctx.globalCompositeOperation = "source-over";
+        sctx.clearRect(0, 0, W, H);
+        tileGrain(sctx, grainOffset);
+        sctx.globalCompositeOperation = "destination-out";
+        sctx.drawImage(dotMaskCanvas, 0, 0);
+
+        ctx.save();
+        ctx.globalCompositeOperation = "soft-light";
+        ctx.globalAlpha = bgGrainAmt;
+        ctx.drawImage(grainScratchCanvas, 0, 0);
+        ctx.restore();
       }
-      ctx.restore();
+
+      if (dotGrainAmt > 0.001) {
+        const sctx = ensureGrainScratchCanvas();
+        sctx.globalCompositeOperation = "source-over";
+        sctx.clearRect(0, 0, W, H);
+        tileGrain(sctx, grainOffset);
+        sctx.globalCompositeOperation = "destination-in";
+        sctx.drawImage(dotMaskCanvas, 0, 0);
+
+        ctx.save();
+        ctx.globalCompositeOperation = "soft-light";
+        ctx.globalAlpha = dotGrainAmt;
+        ctx.drawImage(grainScratchCanvas, 0, 0);
+        ctx.restore();
+      }
     }
 
     // Idle gating: stop the loop when nothing is animating and nothing
@@ -398,6 +569,12 @@ function syncAllOrbits() {
 // ── GLOBAL DRAW TRIGGERS ──
 function kickLoop() {
   if (p5ref && typeof p5ref.loop === "function") p5ref.loop();
+}
+
+function onMetaballsToggle() {
+  const on = dom.metaballs && dom.metaballs.checked;
+  document.body.classList.toggle("metaballs-on", !!on);
+  kickLoop();
 }
 function redrawAll() {
   syncAllOrbits();
@@ -646,7 +823,12 @@ function generateOrbitDots(orb) {
     for (let di = 0; di < count; di++) {
       const angleDeg = clump.start + r() * (clump.end - clump.start);
       const angle = (angleDeg * Math.PI) / 180;
-      const jitter = (r() - 0.5) * orb.radius * 0.07;
+      // Ring Pull maps [0..100] → radial-scatter multiplier [0.5..0]. A high
+      // pull clamps dots near the ring; a low pull lets them drift as far as
+      // ±50% of the orbit radius from the ring line.
+      const pull = orb.ringPull != null ? orb.ringPull : 86;
+      const scatter = (1 - Math.max(0, Math.min(100, pull)) / 100) * 0.5;
+      const jitter = (r() - 0.5) * orb.radius * scatter;
       dots.push({
         x: c.x + Math.cos(angle) * (orb.radius + jitter),
         y: c.y + Math.sin(angle) * (orb.radius + jitter),
@@ -804,6 +986,12 @@ function createOrbitRow(orb, i) {
   body.appendChild(
     createSliderRow("Jitter", 0, 70, orb.clumpGap, (v) => {
       orb.clumpGap = v;
+      redrawAll();
+    }),
+  );
+  body.appendChild(
+    createSliderRow("Ring Pull", 0, 100, orb.ringPull ?? 86, (v) => {
+      orb.ringPull = v;
       redrawAll();
     }),
   );
@@ -1185,6 +1373,7 @@ function exportSVG() {
   const bg = dom.bgColor.value;
   const dotColor = dom.dotColor.value;
   const r = +dom.dotSize.value / 2;
+  const metaballsOn = dom.metaballs.checked;
   let circles = "";
   for (const d of fieldDots)
     circles += `<circle cx="${d.tx.toFixed(2)}" cy="${d.ty.toFixed(2)}" r="${r}" fill="${dotColor}"/>`;
@@ -1193,7 +1382,19 @@ function exportSVG() {
     for (const d of generateOrbitDots(orb))
       circles += `<circle cx="${d.x.toFixed(2)}" cy="${d.y.toFixed(2)}" r="${r}" fill="${c}"/>`;
   }
-  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}"><rect width="${W}" height="${H}" fill="${bg}"/>${circles}</svg>`;
+
+  let defs = "";
+  let group = circles;
+  if (metaballsOn) {
+    const merge = +dom.metaballMerge.value;
+    // Classic SVG gooey: blur the alpha channel, then push mid-alpha values
+    // to either fully opaque or fully transparent via a color matrix so the
+    // soft halos snap into hard-edged blobs.
+    defs = `<defs><filter id="goo" x="-20%" y="-20%" width="140%" height="140%"><feGaussianBlur in="SourceGraphic" stdDeviation="${merge}" result="b"/><feColorMatrix in="b" values="1 0 0 0 0  0 1 0 0 0  0 0 1 0 0  0 0 0 18 -7" result="g"/><feComposite in="SourceGraphic" in2="g" operator="atop"/></filter></defs>`;
+    group = `<g filter="url(#goo)">${circles}</g>`;
+  }
+
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}">${defs}<rect width="${W}" height="${H}" fill="${bg}"/>${group}</svg>`;
   const url = URL.createObjectURL(new Blob([svg], { type: "image/svg+xml" }));
   const a = Object.assign(document.createElement("a"), {
     href: url,
