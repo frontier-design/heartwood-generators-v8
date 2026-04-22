@@ -21,6 +21,8 @@ const DOM_IDS = [
   "dotColor",
   "dotHex",
   "dotSize",
+  "dotBlur",
+  "grainAmount",
   "showGuides",
   "fieldEnabled",
   "fieldDensity",
@@ -115,6 +117,90 @@ function cubicBezier(x1, y1, x2, y2) {
 
 const ease = cubicBezier(0, 0.994, 0.68, 1);
 
+// ── DOT TEXTURE / GRAIN ──
+// Each dot is stamped from a cached sprite with a radial-gradient falloff
+// so its edge reads as a soft blur rather than a hard circle. Sprites are
+// keyed by color + diameter so changes are amortized. A small noise tile
+// is generated once and composited over the canvas each frame to give the
+// image a film-grain texture.
+const dotSpriteCache = new Map();
+let grainCanvas = null;
+let grainOffset = 0;
+
+function hexToRgba(hex, alpha) {
+  let h = String(hex).replace("#", "");
+  if (h.length === 3)
+    h = h
+      .split("")
+      .map((c) => c + c)
+      .join("");
+  const r = parseInt(h.slice(0, 2), 16);
+  const g = parseInt(h.slice(2, 4), 16);
+  const b = parseInt(h.slice(4, 6), 16);
+  return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+}
+
+function getDotSprite(color, diameter, blur) {
+  const d = Math.max(1, Math.round(diameter));
+  const b = Math.max(0, Math.min(1, blur));
+  // Quantize blur to the nearest 5% to keep the cache bounded while a user
+  // drags the slider.
+  const bKey = Math.round(b * 20);
+  const key = `${color.toLowerCase()}|${d}|${bKey}`;
+  const cached = dotSpriteCache.get(key);
+  if (cached) return cached;
+
+  const innerR = d / 2;
+  const halo = innerR * b * 1.6;
+  const outerR = innerR + halo;
+  const pad = Math.ceil(halo) + 1;
+  const size = d + pad * 2;
+  const c = document.createElement("canvas");
+  c.width = size;
+  c.height = size;
+  const ctx = c.getContext("2d");
+  const cx = size / 2;
+
+  if (halo <= 0.01) {
+    ctx.fillStyle = color;
+    ctx.beginPath();
+    ctx.arc(cx, cx, innerR, 0, Math.PI * 2);
+    ctx.fill();
+  } else {
+    const holdStop = innerR / outerR;
+    const grad = ctx.createRadialGradient(cx, cx, 0, cx, cx, outerR);
+    grad.addColorStop(0, color);
+    grad.addColorStop(Math.max(0, holdStop - 0.05), color);
+    grad.addColorStop(1, hexToRgba(color, 0));
+    ctx.fillStyle = grad;
+    ctx.beginPath();
+    ctx.arc(cx, cx, outerR, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  const sprite = { canvas: c, size, half: size / 2 };
+  dotSpriteCache.set(key, sprite);
+  return sprite;
+}
+
+function createGrainTile(size = 192, strength = 42) {
+  const c = document.createElement("canvas");
+  c.width = size;
+  c.height = size;
+  const ctx = c.getContext("2d");
+  const img = ctx.createImageData(size, size);
+  const data = img.data;
+  for (let i = 0; i < data.length; i += 4) {
+    const v = 128 + (Math.random() - 0.5) * strength;
+    data[i] = v;
+    data[i + 1] = v;
+    data[i + 2] = v;
+    data[i + 3] = 255;
+  }
+  ctx.putImageData(img, 0, 0);
+  return c;
+}
+
 // ── p5 SKETCH (instance mode) ──
 const sketch = (p) => {
   p.setup = () => {
@@ -125,6 +211,7 @@ const sketch = (p) => {
     p.frameRate(30);
 
     cacheDom();
+    grainCanvas = createGrainTile();
 
     dom.centerX.value = Math.round(W / 2);
     dom.centerY.value = Math.round(H / 2);
@@ -181,8 +268,10 @@ const sketch = (p) => {
       animating = true;
     };
 
+    const ctx = p.drawingContext;
+    const blurAmt = +dom.dotBlur.value / 100;
+    const fieldSprite = getDotSprite(dotColor, dotD, blurAmt);
     const fieldMode = mode === "moveField";
-    p.fill(dotColor);
     p.noStroke();
     for (let fi = 0; fi < fieldDots.length; fi++) {
       const d = fieldDots[fi];
@@ -196,21 +285,28 @@ const sketch = (p) => {
         p.stroke(255, 0, 0);
         p.strokeWeight(1);
         p.circle(dx, dy, dotD + 6);
-        p.fill(dotColor);
         p.noStroke();
       }
-      p.circle(dx, dy, dotD);
+      ctx.drawImage(
+        fieldSprite.canvas,
+        dx - fieldSprite.half,
+        dy - fieldSprite.half,
+      );
     }
 
     let di = 0;
     for (const orb of orbits) {
-      p.fill(orb.color || dotColor);
+      const sprite = getDotSprite(orb.color || dotColor, dotD, blurAmt);
       for (let j = 0; j < orb.dots.length; j++) {
         const d = orb.dots[j];
         stepDot(d);
         const ox = Math.sin(t * 0.5 + di * 1.3) * drift;
         const oy = Math.cos(t * 0.35 + di * 1.9) * drift;
-        p.circle(d.x + ox, d.y + oy, dotD);
+        ctx.drawImage(
+          sprite.canvas,
+          d.x + ox - sprite.half,
+          d.y + oy - sprite.half,
+        );
         di++;
       }
     }
@@ -220,6 +316,25 @@ const sketch = (p) => {
       p.stroke(255, 166);
       p.strokeWeight(1.5);
       p.circle(dragDot.x, dragDot.y, dotD + 7);
+    }
+
+    // Film-grain overlay: tile a small noise canvas across the frame with a
+    // soft-light blend. Slight per-frame jitter keeps it from looking static.
+    const grainAmt = +dom.grainAmount.value / 100;
+    if (grainCanvas && grainAmt > 0.001) {
+      ctx.save();
+      ctx.globalCompositeOperation = "soft-light";
+      ctx.globalAlpha = grainAmt;
+      const tile = grainCanvas.width;
+      grainOffset = (grainOffset + 7) % tile;
+      const startX = -grainOffset;
+      const startY = -((grainOffset * 13) % tile);
+      for (let y = startY; y < H; y += tile) {
+        for (let x = startX; x < W; x += tile) {
+          ctx.drawImage(grainCanvas, x, y);
+        }
+      }
+      ctx.restore();
     }
 
     // Idle gating: stop the loop when nothing is animating and nothing
@@ -671,6 +786,7 @@ function createOrbitRow(orb, i) {
   );
 
   const dotCountHost = document.createElement("div");
+  dotCountHost.className = "orbit-dot-host";
   body.appendChild(dotCountHost);
 
   body.appendChild(
