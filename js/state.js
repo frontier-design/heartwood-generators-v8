@@ -24,6 +24,11 @@ export const state = {
   H: 0,
   orbits: [],
   scattered: true,
+  // Icon mode: when active, dots animate into a preset shape from data/presets.json
+  iconMode: false,
+  activeIconId: null,
+  iconPresets: [],
+  iconDots: [],
 };
 
 export const dom = {};

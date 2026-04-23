@@ -1002,6 +1002,52 @@ input[type=checkbox]:checked::before {
   font-weight: 600;
 }
 
+/* ── ICON PRESETS ── */
+.icon-grid {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 6px;
+  margin-bottom: 8px;
+}
+
+.icon-preset-btn {
+  aspect-ratio: 1 / 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 3px;
+  border: none;
+  background: var(--white);
+  box-shadow: var(--shadow-ring);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: background 0.12s, box-shadow 0.12s, transform 0.12s;
+}
+
+.icon-preset-btn:hover {
+  background: var(--gray-50);
+  box-shadow: var(--shadow-ring), var(--shadow-elevate);
+}
+
+.icon-preset-btn:active {
+  transform: scale(0.97);
+}
+
+.icon-preset-btn.active {
+  background: var(--vercel-black);
+  box-shadow: 0 0 0 1px var(--vercel-black);
+}
+
+.icon-preset-btn img {
+  width: 100%;
+  object-fit: contain;
+  pointer-events: none;
+}
+
+.icon-preset-btn.active img {
+  filter: invert(1);
+}
+
 /* ── DATA PRESETS ── */
 .preset-list {
   display: flex;

@@ -38,7 +38,7 @@ function spawnFadingDot(tx, ty) {
   };
 }
 
-function markDying(d) {
+export function markDying(d) {
   if (d.dying) return;
   const now = nowMs();
   ensureDotAnimFields(d);
@@ -47,6 +47,13 @@ function markDying(d) {
   d.scaleTo = 0;
   d.scaleT0 = now;
   d.scaleDur = ANIM_DURATION_MS;
+}
+
+/** Fade out every dot across all orbits (used when switching into icon mode). */
+export function killAllOrbitDots() {
+  for (const orb of state.orbits) {
+    for (const d of orb.dots) markDying(d);
+  }
 }
 
 // Bring a dying dot back to life so rapid slider scrubs don't produce

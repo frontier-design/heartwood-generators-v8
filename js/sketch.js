@@ -234,6 +234,51 @@ export const sketch = (p) => {
       }
     }
 
+    // ── ICON DOTS ── single colour pass, drawn alongside orbits so that
+    // switching modes can cross-fade smoothly for a frame.
+    if (state.iconDots.length) {
+      const iconSprite = metaballsOn ? null : getDotSprite(dotColor, dotD, blurAmt);
+      if (metaballsOn) {
+        mctx.fillStyle = dotColor;
+        mctx.beginPath();
+      }
+      for (let j = 0; j < state.iconDots.length; j++) {
+        const d = state.iconDots[j];
+        stepDot(d);
+        const s = d.scale != null ? d.scale : 1;
+        if (s <= 0.001) {
+          di++;
+          continue;
+        }
+        const dx = d.x;
+        const dy = d.y;
+        const rs = r * s;
+        if (metaballsOn) {
+          mctx.moveTo(dx + rs, dy);
+          mctx.arc(dx, dy, rs, 0, Math.PI * 2);
+        } else if (s >= 0.999) {
+          ctx.drawImage(iconSprite.canvas, dx - iconSprite.half, dy - iconSprite.half);
+        } else {
+          const sz = iconSprite.size * s;
+          const half = sz * 0.5;
+          ctx.drawImage(iconSprite.canvas, dx - half, dy - half, sz, sz);
+        }
+        if (needsMask) {
+          maskCtx.moveTo(dx + rs, dy);
+          maskCtx.arc(dx, dy, rs, 0, Math.PI * 2);
+        }
+        di++;
+      }
+      if (metaballsOn) mctx.fill();
+
+      for (let k = state.iconDots.length - 1; k >= 0; k--) {
+        const dd = state.iconDots[k];
+        if (dd.dying && dd.scaleDur === 0 && dd.scale <= 0.001) {
+          state.iconDots.splice(k, 1);
+        }
+      }
+    }
+
     if (needsMask) maskCtx.fill();
 
     if (metaballsOn) {
@@ -303,7 +348,10 @@ export const sketch = (p) => {
     dom.centerX.value = String(c.x);
     dom.centerY.value = String(c.y);
     regenField();
-    if (state.scattered) {
+    if (state.iconMode) {
+      // Keep the icon centred on the new canvas without re-animating.
+      import("./icons.js").then(({ refitActiveIcon }) => refitActiveIcon());
+    } else if (state.scattered) {
       spawnScatteredDots();
     } else {
       syncAllOrbits();

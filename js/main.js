@@ -5,6 +5,7 @@ import { switchDataTab, parsePastedCSV, recalcDots, applyPreset, initDataListene
 import { addOrbit, reshuffleAll } from './orbit-ui.js';
 import { exportSVG, exportPNG } from './export.js';
 import { sketch } from './sketch.js';
+import { loadIconPresets, renderIconButtons } from './icons.js';
 
 // Expose functions to window for inline HTML event handlers
 window.setMode = setMode;
@@ -31,6 +32,11 @@ window.freeForAll = freeForAll;
 // Initialize event listeners
 initInteractionListeners();
 initDataListeners();
+
+// Render an empty icon section immediately so layout doesn't shift, then
+// fetch presets.json and re-render once shapes are available.
+renderIconButtons();
+loadIconPresets();
 
 // Launch p5
 new p5(sketch, document.getElementById("canvasContainer"));

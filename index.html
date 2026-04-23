@@ -41,8 +41,18 @@
 
     <!-- ACTION BUTTONS -->
     <div class="panel-actions">
-      <button class="action-btn action-go" id="goBtn" onclick="goAnimate()">Go</button>
-      <button class="action-btn action-free hidden" id="freeBtn" onclick="freeForAll()">Free For All</button>
+      <button class="action-btn action-free" id="freeBtn" onclick="freeForAll()">Free For All</button>
+      <button class="action-btn action-go" id="orbitBtn" onclick="goAnimate()">Orbit</button>
+    </div>
+
+    <!-- ICONS -->
+    <div class="section">
+      <div class="section-header" onclick="toggleSection(this)">
+        <span class="section-title">Icons</span><span class="section-arrow open" aria-hidden="true"></span>
+      </div>
+      <div class="section-body open">
+        <div id="iconList"></div>
+      </div>
     </div>
 
     <!-- COLOR -->

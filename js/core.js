@@ -15,6 +15,12 @@ export function onMetaballsToggle() {
 }
 
 export function redrawAll() {
+  if (state.iconMode) {
+    // Icon dots are retargeted directly via the icons module; orbits stay
+    // frozen in whatever fade-out state they were left in.
+    kickLoop();
+    return;
+  }
   if (state.scattered) {
     resizeScatteredDots();
   } else {
@@ -39,20 +45,30 @@ export function randomizeField() {
   regenField();
 }
 
-export function goAnimate() {
+/** "Orbit" button: animate dots into the current orbit formation, exiting icon
+ *  mode on the way if it was active. */
+export async function goAnimate() {
+  if (state.iconMode) {
+    const { exitIconMode } = await import("./icons.js");
+    exitIconMode();
+    return;
+  }
   state.scattered = false;
   syncAllOrbits();
   kickLoop();
-  document.getElementById("goBtn").classList.add("hidden");
-  document.getElementById("freeBtn").classList.remove("hidden");
 }
 
-export function freeForAll() {
+/** "Free For All" button: scatter whatever dots are currently on screen. */
+export async function freeForAll() {
+  if (state.iconMode) {
+    const { scatterIconDots } = await import("./icons.js");
+    scatterIconDots();
+    return;
+  }
   state.scattered = true;
   const now = state.p5ref ? state.p5ref.millis() : 0;
   const total = state.orbits.reduce((s, o) => s + o.dots.length, 0);
   // Keep only ~30 dots total, trim excess, scatter the rest
-  let kept = 0;
   for (const orb of state.orbits) {
     const keep = total > 0
       ? Math.max(1, Math.round((orb.dots.length / total) * 30))
@@ -65,11 +81,8 @@ export function freeForAll() {
       d.ty = Math.random() * state.H;
       d.animStart = now;
     }
-    kept += orb.dots.length;
   }
   kickLoop();
-  document.getElementById("freeBtn").classList.add("hidden");
-  document.getElementById("goBtn").classList.remove("hidden");
 }
 
 export function init() {
