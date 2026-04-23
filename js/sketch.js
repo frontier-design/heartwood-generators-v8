@@ -1,10 +1,10 @@
-import { state, dom, cacheDom, ANIM_DURATION_MS, ease } from './state.js';
+import { state, dom, cacheDom, defaultSharedCenter, ANIM_DURATION_MS, ease } from './state.js';
 import {
   render, createGrainTile, getDotSprite,
   ensureDotMaskCanvas, ensureGrainScratchCanvas, tileGrain,
   ensureMetaballCanvas, metaballCanvas, dotMaskCanvas, grainScratchCanvas,
 } from './rendering.js';
-import { getCenter } from './orbit-gen.js';
+import { getCenter, logOrbitCenters } from './orbit-gen.js';
 import { regenField, kickLoop, init } from './core.js';
 import { syncAllOrbits } from './orbit-gen.js';
 import { setupCanvasListeners } from './interaction.js';
@@ -23,11 +23,13 @@ export const sketch = (p) => {
       "#metaballFilter feGaussianBlur",
     );
 
-    dom.centerX.value = Math.round(state.W / 2);
-    dom.centerY.value = Math.round(state.H / 2);
+    const c0 = defaultSharedCenter(state.W, state.H);
+    dom.centerX.value = String(c0.x);
+    dom.centerY.value = String(c0.y);
 
     setupCanvasListeners(p.canvas);
     init();
+    logOrbitCenters("initial layout");
   };
 
   p.draw = () => {
@@ -230,6 +232,9 @@ export const sketch = (p) => {
     state.W = p.windowWidth;
     state.H = p.windowHeight;
     p.resizeCanvas(state.W, state.H);
+    const c = defaultSharedCenter(state.W, state.H);
+    dom.centerX.value = String(c.x);
+    dom.centerY.value = String(c.y);
     regenField();
     syncAllOrbits();
     kickLoop();

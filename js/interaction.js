@@ -1,6 +1,7 @@
 import { state, dom } from './state.js';
 import { kickLoop, redrawAll } from './core.js';
 import { renderOrbitList } from './orbit-ui.js';
+import { logOrbitCenters } from './orbit-gen.js';
 
 export function togglePanel() {
   if (dom.panel) dom.panel.classList.toggle("hidden");
@@ -23,6 +24,7 @@ export function onSharedCenterChange() {
   }
   renderOrbitList();
   redrawAll();
+  logOrbitCenters(`shared center ${shared ? "on" : "off"}`);
 }
 
 export function setMode(m) {
@@ -62,6 +64,7 @@ function onCanvasMouseDown(e) {
     dom.centerX.value = Math.round(pos.x);
     dom.centerY.value = Math.round(pos.y);
     redrawAll();
+    logOrbitCenters("canvas click (move orbit center)");
   }
 }
 
@@ -95,6 +98,12 @@ function onCanvasTouchStart(e) {
       state.dragOffY = state.dragDot.y - pos.y;
       kickLoop();
     }
+  }
+  if (state.mode === "moveCenter") {
+    dom.centerX.value = Math.round(pos.x);
+    dom.centerY.value = Math.round(pos.y);
+    redrawAll();
+    logOrbitCenters("canvas tap (move orbit center)");
   }
 }
 

@@ -10,6 +10,24 @@ export function getCenter(orb) {
   return { x: orb.cx, y: orb.cy };
 }
 
+/** Logs resolved center (x, y) for each orbit whenever centers are updated. */
+export function logOrbitCenters(reason = "") {
+  if (!state.orbits.length) return;
+  const shared = !!(dom.sharedCenter && dom.sharedCenter.checked);
+  const payload = state.orbits.map((orb, i) => {
+    const c = getCenter(orb);
+    return {
+      index: i + 1,
+      label: orb.label,
+      x: c.x,
+      y: c.y,
+      ownCx: orb.cx,
+      ownCy: orb.cy,
+    };
+  });
+  console.log("[orbit centers]", reason || "update", { shared }, payload);
+}
+
 export function generateOrbitDots(orb) {
   const r = seededRand(orb.seed);
   const c = getCenter(orb);

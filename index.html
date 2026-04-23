@@ -24,7 +24,7 @@
     aria-hidden="true">
     <defs>
       <filter id="metaballFilter" color-interpolation-filters="sRGB">
-        <feGaussianBlur in="SourceGraphic" stdDeviation="14" result="blur" />
+        <feGaussianBlur in="SourceGraphic" stdDeviation="3" result="blur" />
         <feColorMatrix in="blur" type="matrix"
           values="1 0 0 0 0  0 1 0 0 0  0 0 1 0 0  0 0 0 19 -9" result="goo" />
         <feComposite in="SourceGraphic" in2="goo" operator="atop" />
@@ -61,7 +61,18 @@
             <span class="swatch-hex" id="bgHex">#f9f9f9</span>
           </div>
         </div>
-        <div class="row row-offset"><label>Dot Color</label></div>
+        <div class="row row-offset"><label>BG Grain</label><input type="range" id="bgGrain" min="0"
+            max="100" value="20" oninput="syncVal(this,'bgGrainV')"><span class="val" id="bgGrainV">20</span></div>
+      </div>
+    </div>
+
+    <!-- DOTS -->
+    <div class="section">
+      <div class="section-header" onclick="toggleSection(this)">
+        <span class="section-title">Dots</span><span class="section-arrow" aria-hidden="true"></span>
+      </div>
+      <div class="section-body">
+        <div class="row"><label>Dot Color</label></div>
         <div class="swatch-grid-preset" id="dotSwatches"></div>
         <div class="swatch-custom-block">
           <span class="swatch-custom-label">Custom</span>
@@ -72,18 +83,16 @@
           </div>
         </div>
         <div class="row row-offset"><label>Dot Size</label><input type="range" id="dotSize" min="1"
-            max="14" value="5" oninput="syncVal(this,'dotSizeV')"><span class="val" id="dotSizeV">5</span></div>
+            max="20" value="10" oninput="syncVal(this,'dotSizeV')"><span class="val" id="dotSizeV">10</span></div>
         <div class="row"><label>Edge Blur</label><input type="range" id="dotBlur" min="0"
-            max="100" value="50" oninput="syncVal(this,'dotBlurV')"><span class="val" id="dotBlurV">50</span></div>
-        <div class="row"><label>BG Grain</label><input type="range" id="bgGrain" min="0"
-            max="100" value="55" oninput="syncVal(this,'bgGrainV')"><span class="val" id="bgGrainV">55</span></div>
+            max="100" value="20" oninput="syncVal(this,'dotBlurV')"><span class="val" id="dotBlurV">20</span></div>
         <div class="row"><label>Dot Grain</label><input type="range" id="dotGrain" min="0"
             max="100" value="55" oninput="syncVal(this,'dotGrainV')"><span class="val" id="dotGrainV">55</span></div>
         <div class="row row-offset"><label for="metaballs">Metaballs</label>
           <input type="checkbox" id="metaballs" onchange="onMetaballsToggle()">
         </div>
-        <div class="row"><label>Merge</label><input type="range" id="metaballMerge" min="2"
-            max="40" value="14" oninput="syncVal(this,'metaballMergeV')"><span class="val" id="metaballMergeV">14</span></div>
+        <div class="row"><label>Merge</label><input type="range" id="metaballMerge" min="1"
+            max="5" value="3" oninput="syncVal(this,'metaballMergeV')"><span class="val" id="metaballMergeV">3</span></div>
       </div>
     </div>
 
@@ -95,9 +104,9 @@
       <div class="section-body">
         <div class="row">
           <label>Enabled</label>
-          <input type="checkbox" id="fieldEnabled" checked>
+          <input type="checkbox" id="fieldEnabled">
         </div>
-        <div id="fieldControls">
+        <div id="fieldControls" style="opacity:0.4">
           <div class="row"><label>Density</label>
             <input type="range" id="fieldDensity" min="0" max="100" value="30"
               oninput="syncVal(this,'fieldDensityV');regenField()">
@@ -161,15 +170,15 @@
     <!-- ORBITS -->
     <div class="section">
       <div class="section-header" onclick="toggleSection(this)">
-        <span class="section-title">Orbits</span><span class="section-arrow open" aria-hidden="true"></span>
+        <span class="section-title">Orbits</span><span class="section-arrow" aria-hidden="true"></span>
       </div>
-      <div class="section-body open">
+      <div class="section-body">
         <div class="row"><label>Show Orbits</label><input type="checkbox" id="showGuides" onchange="kickLoop()"></div>
         <div class="row"><label>Shared Center</label>
           <input type="checkbox" id="sharedCenter" checked onchange="onSharedCenterChange()">
         </div>
-        <input type="hidden" id="centerX" value="340">
-        <input type="hidden" id="centerY" value="420">
+        <input type="hidden" id="centerX" value="887">
+        <input type="hidden" id="centerY" value="439">
         <div class="orbit-list-wrap" id="orbitList"></div>
         <div class="btn-row reshuffle-row">
           <button onclick="addOrbit()">Add Orbit</button>

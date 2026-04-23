@@ -40,20 +40,64 @@ export function cacheDom() {
   for (const id of DOM_IDS) dom[id] = document.getElementById(id);
 }
 
+/** Shared orbit center: slightly right of geometric center (left panel); scales with viewport (~887,439 near 1600×900). */
+export function defaultSharedCenter(W, H) {
+  return {
+    x: Math.round(W * 0.5544),
+    y: Math.round(H * 0.4878),
+  };
+}
+
+const DEFAULT_ORBIT_PRESETS = [
+  {
+    radius: 65,
+    dotCount: 48,
+    clumpCount: 3,
+    clumpSize: 88,
+    clumpGap: 60,
+    ringPull: 86,
+  },
+  {
+    radius: 148,
+    dotCount: 161,
+    clumpCount: 3,
+    clumpSize: 82,
+    clumpGap: 58,
+    ringPull: 74,
+  },
+  {
+    radius: 259,
+    dotCount: 298,
+    clumpCount: 8,
+    clumpSize: 40,
+    clumpGap: 29,
+    ringPull: 86,
+  },
+];
+
 export function defaultOrbit(i) {
+  const p =
+    DEFAULT_ORBIT_PRESETS[i] ?? {
+      radius: 70 + i * 90,
+      dotCount: 20,
+      clumpCount: 3,
+      clumpSize: 28,
+      clumpGap: 12,
+      ringPull: 86,
+    };
   return {
     id: i,
     label: `Orbit ${i + 1}`,
     dataValue: 0,
-    dotCount: 20,
+    dotCount: p.dotCount,
     useData: false,
-    radius: 70 + i * 90,
+    radius: p.radius,
     cx: null,
     cy: null,
-    clumpCount: 3,
-    clumpSize: 28,
-    clumpGap: 12,
-    ringPull: 86,
+    clumpCount: p.clumpCount,
+    clumpSize: p.clumpSize,
+    clumpGap: p.clumpGap,
+    ringPull: p.ringPull,
     color: null,
     open: false,
     seed: randSeed(),

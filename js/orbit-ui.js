@@ -1,6 +1,6 @@
 import { state, dom, defaultOrbit, randSeed } from "./state.js";
 import { redrawAll, kickLoop, regenField } from "./core.js";
-import { syncOrbitDots } from "./orbit-gen.js";
+import { syncOrbitDots, logOrbitCenters } from "./orbit-gen.js";
 import { recalcDots, renderManualRows } from "./data.js";
 import { SWATCHES } from "./swatches.js";
 
@@ -199,6 +199,7 @@ function createOrbitRow(orb, i) {
     cyInput.addEventListener("input", () => {
       setOrbitProp(i, "cy", +cyInput.value);
       redrawAll();
+      logOrbitCenters(`${orb.label} CY`);
     });
     cRow.appendChild(cyInput);
     body.appendChild(cRow);
