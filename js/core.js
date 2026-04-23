@@ -1,7 +1,7 @@
 import { state, dom, defaultOrbit, seededRand, randSeed } from "./state.js";
 import { syncAllOrbits, retargetDots } from "./orbit-gen.js";
 import { initSwatches } from "./swatches.js";
-import { renderManualRows } from "./data.js";
+import { renderManualRows, renderPresetList } from "./data.js";
 import { renderOrbitList } from "./orbit-ui.js";
 
 export function kickLoop() {
@@ -51,6 +51,7 @@ export function randomizeField() {
 export function init() {
   state.orbits = [defaultOrbit(0), defaultOrbit(1), defaultOrbit(2)];
   initSwatches();
+  renderPresetList();
   regenField();
   renderManualRows();
   renderOrbitList();

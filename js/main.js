@@ -1,7 +1,7 @@
 import { kickLoop, redrawAll, regenField, syncVal, onMetaballsToggle, randomizeField } from './core.js';
 import { setMode, toggleSection, onSharedCenterChange, initInteractionListeners } from './interaction.js';
 import { selectCombo } from './swatches.js';
-import { switchDataTab, parsePastedCSV, recalcDots, initDataListeners } from './data.js';
+import { switchDataTab, parsePastedCSV, recalcDots, applyPreset, initDataListeners } from './data.js';
 import { addOrbit, reshuffleAll } from './orbit-ui.js';
 import { exportSVG, exportPNG } from './export.js';
 import { sketch } from './sketch.js';
@@ -24,6 +24,7 @@ window.addOrbit = addOrbit;
 window.reshuffleAll = reshuffleAll;
 window.exportSVG = exportSVG;
 window.exportPNG = exportPNG;
+window.applyPreset = applyPreset;
 
 // Initialize event listeners
 initInteractionListeners();

@@ -1002,6 +1002,45 @@ input[type=checkbox]:checked::before {
   font-weight: 600;
 }
 
+/* ── DATA PRESETS ── */
+.preset-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.preset-btn {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  width: 100%;
+  padding: 10px 12px;
+  border: none;
+  background: var(--white);
+  box-shadow: var(--shadow-ring);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  text-align: left;
+  transition: background 0.12s, box-shadow 0.12s;
+}
+
+.preset-btn:hover {
+  background: var(--gray-50);
+  box-shadow: var(--shadow-ring), var(--shadow-elevate);
+}
+
+.preset-name {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.preset-source {
+  font-size: 11px;
+  font-weight: 400;
+  color: var(--text-muted);
+}
+
 /* ── DATA SUMMARY ── */
 .data-summary {
   background: #ffffff;

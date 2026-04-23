@@ -105,9 +105,16 @@
       <div class="section-body">
 
         <div class="tab-row">
+          <button class="tab-btn" id="tabPresets" onclick="switchDataTab('presets')">Presets</button>
           <button class="tab-btn active" id="tabManual" onclick="switchDataTab('manual')">Manual</button>
           <button class="tab-btn" id="tabCSV" onclick="switchDataTab('csv')">CSV Upload</button>
           <button class="tab-btn" id="tabPaste" onclick="switchDataTab('paste')">CSV Paste</button>
+        </div>
+
+        <!-- PRESETS -->
+        <div id="dataPresets" style="display:none;">
+          <div class="preset-list" id="presetList"></div>
+          <div class="hint" style="margin-top:8px;">Toronto Open Data</div>
         </div>
 
         <!-- MANUAL -->
