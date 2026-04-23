@@ -1,10 +1,17 @@
-import { state, dom, seededRand, ANIM_DURATION_MS } from './state.js';
+import {
+  state,
+  dom,
+  seededRand,
+  ANIM_DURATION_MS,
+  FADE_DURATION_MS,
+} from "./state.js";
 
 function nowMs() {
   return state.p5ref ? state.p5ref.millis() : 0;
 }
 
-// Ensure older dots (created before scale animation existed) have the fields.
+// Ensure older dots (created before the scale animation existed) have the
+// fields populated so stepDot can iterate without null checks.
 export function ensureDotAnimFields(d) {
   if (d.scale == null) {
     d.scale = 1;
@@ -33,7 +40,7 @@ function spawnFadingDot(tx, ty) {
     scaleFrom: 0,
     scaleTo: 1,
     scaleT0: now,
-    scaleDur: ANIM_DURATION_MS,
+    scaleDur: FADE_DURATION_MS,
     dying: false,
   };
 }
@@ -46,7 +53,7 @@ export function markDying(d) {
   d.scaleFrom = d.scale;
   d.scaleTo = 0;
   d.scaleT0 = now;
-  d.scaleDur = ANIM_DURATION_MS;
+  d.scaleDur = FADE_DURATION_MS;
 }
 
 /** Fade out every dot across all orbits (used when switching into icon mode). */
@@ -57,14 +64,14 @@ export function killAllOrbitDots() {
 }
 
 // Bring a dying dot back to life so rapid slider scrubs don't produce
-// overlapping shrink/grow pairs in the same region.
+// overlapping fade-out / fade-in pairs in the same region.
 function reviveDot(d) {
   const now = nowMs();
   d.dying = false;
   d.scaleFrom = d.scale;
   d.scaleTo = 1;
   d.scaleT0 = now;
-  d.scaleDur = ANIM_DURATION_MS;
+  d.scaleDur = FADE_DURATION_MS;
 }
 
 export function getCenter(orb) {
@@ -164,7 +171,7 @@ export function retargetDots(arr, targets, rand) {
       }
     }
     // Spawn any still-needed dots at random positions; they ease to their
-    // targets while simultaneously fading in from scale 0.
+    // targets while simultaneously scaling up from 0.
     if (need > 0) {
       const startIdx = want - need;
       for (let k = startIdx; k < want; k++) {
@@ -207,9 +214,10 @@ export function spawnScatteredDots() {
   const total = state.orbits.reduce((s, o) => s + o.dotCount, 0);
   for (const orb of state.orbits) {
     // Distribute the initial 30 proportionally across orbits
-    const n = total > 0
-      ? Math.max(1, Math.round((orb.dotCount / total) * INITIAL_DOT_COUNT))
-      : Math.round(INITIAL_DOT_COUNT / state.orbits.length);
+    const n =
+      total > 0
+        ? Math.max(1, Math.round((orb.dotCount / total) * INITIAL_DOT_COUNT))
+        : Math.round(INITIAL_DOT_COUNT / state.orbits.length);
     orb.dots.length = 0;
     for (let i = 0; i < n; i++) {
       orb.dots.push(spawnFadingDot());

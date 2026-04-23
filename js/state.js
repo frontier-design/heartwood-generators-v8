@@ -112,6 +112,9 @@ export function defaultOrbit(i) {
 
 // ── EASING ──
 export const ANIM_DURATION_MS = 1167;
+// Fade-in/out runs faster than the position tween so dots snap into view
+// while still easing to their target location.
+export const FADE_DURATION_MS = 350;
 
 function cubicBezier(x1, y1, x2, y2) {
   return function (t) {

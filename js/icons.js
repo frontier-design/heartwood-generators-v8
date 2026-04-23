@@ -1,11 +1,24 @@
-import { state, ANIM_DURATION_MS } from "./state.js";
+import { state } from "./state.js";
 import {
   retargetDots,
-  killAllOrbitDots,
-  markDying,
   syncAllOrbits,
+  markDying,
 } from "./orbit-gen.js";
 import { kickLoop } from "./core.js";
+
+/**
+ * Move every non-dying dot out of `from` and into `to`, preserving order.
+ * Dying dots are left behind so they can finish their fade-out animation
+ * without being retargeted into the new formation.
+ */
+function donateLiveDots(from, to) {
+  const live = [];
+  for (let i = from.length - 1; i >= 0; i--) {
+    if (!from[i].dying) live.push(from.splice(i, 1)[0]);
+  }
+  live.reverse();
+  for (const d of live) to.push(d);
+}
 
 // Grid constants mirror frontier-design/heartwood-generators canvas-icons.js so
 // preset cells translate 1:1. The reference cell (GRID_REF_C, GRID_REF_R) is
@@ -76,8 +89,10 @@ export async function loadIconPresets() {
 }
 
 /**
- * Enter icon mode and animate all dots into the selected shape. Existing orbit
- * dots fade out; icon dots fade in from random positions toward their cells.
+ * Enter icon mode and animate all dots into the selected shape. When coming
+ * from orbit mode the existing orbit dots are migrated into the icon pool so
+ * they tween smoothly toward their cells; only the delta (extra or missing
+ * dots) fades out / in.
  */
 export function activateIcon(presetId) {
   const preset = findPreset(presetId);
@@ -88,7 +103,13 @@ export function activateIcon(presetId) {
   state.activeIconId = presetId;
   state.scattered = false;
 
-  if (!wasIcon) killAllOrbitDots();
+  // First entry into icon mode: donate every live orbit dot to iconDots so
+  // retargetDots can reuse them instead of fading them out and in.
+  if (!wasIcon) {
+    for (const orb of state.orbits) {
+      donateLiveDots(orb.dots, state.iconDots);
+    }
+  }
 
   const targets = computeTargets(preset);
   retargetDots(state.iconDots, targets);
@@ -125,16 +146,56 @@ export function scatterIconDots() {
 }
 
 /**
- * Leave icon mode and animate straight into the current orbit formation. Icon
- * dots fade out while fresh orbit dots fade in from random positions and ease
- * to their targets — no Free-For-All detour required.
+ * Leave icon mode and animate straight into the current orbit formation.
+ * Live icon dots are redistributed across orbits (proportional to each
+ * orbit's dotCount) so they migrate into the new layout instead of fading
+ * out. `syncAllOrbits` then retargets them and fades in any missing dots.
  */
 export function exitIconMode() {
   if (!state.iconMode) return;
   state.iconMode = false;
   state.activeIconId = null;
-  for (const d of state.iconDots) markDying(d);
   state.scattered = false;
+
+  // Pull live icon dots out; leave dying ones behind so they finish fading.
+  const live = [];
+  for (let i = state.iconDots.length - 1; i >= 0; i--) {
+    if (!state.iconDots[i].dying) live.push(state.iconDots.splice(i, 1)[0]);
+  }
+  live.reverse();
+
+  if (state.orbits.length > 0 && live.length > 0) {
+    const total = state.orbits.reduce((s, o) => s + o.dotCount, 0);
+    const quotas = state.orbits.map((orb) =>
+      total > 0
+        ? Math.round((orb.dotCount / total) * live.length)
+        : Math.round(live.length / state.orbits.length),
+    );
+    // Nudge quotas so they sum to exactly live.length.
+    let diff = live.length - quotas.reduce((a, b) => a + b, 0);
+    for (let i = 0; diff !== 0; i = (i + 1) % quotas.length) {
+      if (diff > 0) {
+        quotas[i]++;
+        diff--;
+      } else if (quotas[i] > 0) {
+        quotas[i]--;
+        diff++;
+      }
+    }
+    let idx = 0;
+    for (let i = 0; i < state.orbits.length; i++) {
+      for (let k = 0; k < quotas[i] && idx < live.length; k++) {
+        state.orbits[i].dots.push(live[idx++]);
+      }
+    }
+  } else if (live.length > 0) {
+    // Nowhere to migrate them — put them back and fade them out.
+    for (const d of live) {
+      state.iconDots.push(d);
+      markDying(d);
+    }
+  }
+
   syncAllOrbits();
   renderIconButtons();
   kickLoop();
