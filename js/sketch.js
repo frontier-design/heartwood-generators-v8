@@ -1,13 +1,24 @@
-import { state, dom, cacheDom, defaultSharedCenter, ANIM_DURATION_MS, ease } from './state.js';
 import {
-  render, createGrainTile, getDotSprite,
-  ensureDotMaskCanvas, ensureGrainScratchCanvas, tileGrain,
-  ensureMetaballCanvas, metaballCanvas, dotMaskCanvas, grainScratchCanvas,
-} from './rendering.js';
-import { getCenter, logOrbitCenters } from './orbit-gen.js';
-import { regenField, kickLoop, init } from './core.js';
-import { syncAllOrbits } from './orbit-gen.js';
-import { setupCanvasListeners } from './interaction.js';
+  state,
+  dom,
+  cacheDom,
+  defaultSharedCenter,
+  ANIM_DURATION_MS,
+  ease,
+} from "./state.js";
+import {
+  render,
+  createGrainTile,
+  getDotSprite,
+  ensureDotMaskCanvas,
+  ensureGrainScratchCanvas,
+  tileGrain,
+  ensureMetaballCanvas,
+} from "./rendering.js";
+import { getCenter, logOrbitCenters } from "./orbit-gen.js";
+import { regenField, kickLoop, init } from "./core.js";
+import { syncAllOrbits } from "./orbit-gen.js";
+import { setupCanvasListeners } from "./interaction.js";
 
 export const sketch = (p) => {
   p.setup = () => {
@@ -33,6 +44,14 @@ export const sketch = (p) => {
   };
 
   p.draw = () => {
+    try {
+      return _draw(p);
+    } catch (e) {
+      console.error("[draw error]", e);
+    }
+  };
+
+  const _draw = (p) => {
     const bg = dom.bgColor.value;
     const dotColor = dom.dotColor.value;
     const dotD = +dom.dotSize.value;
@@ -177,7 +196,7 @@ export const sketch = (p) => {
       }
       ctx.save();
       ctx.filter = "url(#metaballFilter)";
-      ctx.drawImage(metaballCanvas, 0, 0);
+      ctx.drawImage(render.metaballCanvas, 0, 0);
       ctx.restore();
     }
 
@@ -198,12 +217,12 @@ export const sketch = (p) => {
         sctx.clearRect(0, 0, state.W, state.H);
         tileGrain(sctx, render.grainOffset);
         sctx.globalCompositeOperation = "destination-out";
-        sctx.drawImage(dotMaskCanvas, 0, 0);
+        sctx.drawImage(render.dotMaskCanvas, 0, 0);
 
         ctx.save();
         ctx.globalCompositeOperation = "soft-light";
         ctx.globalAlpha = bgGrainAmt;
-        ctx.drawImage(grainScratchCanvas, 0, 0);
+        ctx.drawImage(render.grainScratchCanvas, 0, 0);
         ctx.restore();
       }
 
@@ -213,19 +232,20 @@ export const sketch = (p) => {
         sctx.clearRect(0, 0, state.W, state.H);
         tileGrain(sctx, render.grainOffset);
         sctx.globalCompositeOperation = "destination-in";
-        sctx.drawImage(dotMaskCanvas, 0, 0);
+        sctx.drawImage(render.dotMaskCanvas, 0, 0);
 
         ctx.save();
         ctx.globalCompositeOperation = "soft-light";
         ctx.globalAlpha = dotGrainAmt;
-        ctx.drawImage(grainScratchCanvas, 0, 0);
+        ctx.drawImage(render.grainScratchCanvas, 0, 0);
         ctx.restore();
       }
     }
 
-    if (!animating && !state.dragDot && !fieldMode) {
-      p.noLoop();
-    }
+    // Keep the loop alive so the subtle sin/cos drift is always visible.
+    // Only pause when nothing is moving AND we're not in a mode that needs
+    // continuous rendering (the drift is the baseline "alive" animation).
+    // Removed the old noLoop() gate that was killing idle drift in view mode.
   };
 
   p.windowResized = () => {

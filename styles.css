@@ -81,6 +81,42 @@ body,
   display: none;
 }
 
+/* ── NAV BAR (top-center tab switcher) ── */
+.nav-bar {
+  position: fixed;
+  top: 16px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 20;
+  display: flex;
+  gap: 2px;
+  background: var(--white);
+  border-radius: var(--radius-pill);
+  box-shadow: var(--shadow-card);
+  padding: 4px;
+}
+
+.nav-bar a {
+  font-family: var(--font-sans);
+  font-size: 13px;
+  font-weight: 500;
+  padding: 6px 16px;
+  border-radius: var(--radius-pill);
+  text-decoration: none;
+  color: var(--text-secondary);
+  transition: background 0.12s, color 0.12s;
+}
+
+.nav-bar a:hover {
+  background: var(--gray-50);
+  color: var(--text-primary);
+}
+
+.nav-bar a.active {
+  background: var(--vercel-black);
+  color: var(--white);
+}
+
 /* ── CANVAS CONTAINER (full viewport) ── */
 #canvasContainer {
   position: fixed;
@@ -122,6 +158,47 @@ body,
   border-radius: var(--radius-pill);
 }
 
+
+/* ── COMBO SWATCHES (bg + dot pairs) ── */
+.combo-grid {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 6px;
+  margin-bottom: var(--space-2);
+}
+
+.combo-swatch {
+  aspect-ratio: 1;
+  border-radius: 100px;
+  border: none;
+  cursor: pointer;
+  position: relative;
+  padding: 0;
+  outline: none;
+  box-shadow: var(--ring-light) 0 0 0 1px;
+  transition: transform 0.12s, box-shadow 0.12s;
+}
+
+.combo-swatch::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 44%;
+  height: 44%;
+  border-radius: 100px;
+  background: var(--dot);
+}
+
+.combo-swatch:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.14), var(--shadow-elevate);
+}
+
+.combo-swatch.active {
+  box-shadow: 0 0 0 2px var(--vercel-black);
+}
 
 /* ── COLOR SWATCHES ── */
 .swatch-row {

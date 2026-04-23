@@ -27,24 +27,23 @@ export const state = {
 
 export const dom = {};
 export const DOM_IDS = [
-  "bgColor", "bgHex", "dotColor", "dotHex", "dotSize", "dotBlur",
+  "bgColor", "dotColor", "dotSize", "dotBlur",
   "bgGrain", "dotGrain", "metaballs", "metaballMerge", "showGuides",
   "fieldEnabled", "fieldDensity", "fieldControls", "sharedCenter",
   "sharedCenterRow", "centerX", "centerY", "dotBudget", "csvPaste",
   "csvFile", "csvStatus", "dsTotalVal", "dsOrbitCount", "dataSummary",
   "panel", "modeBar", "exportDock", "manualRows", "orbitList",
-  "orbitCount", "bgSwatches", "dotSwatches",
+  "orbitCount",
 ];
 
 export function cacheDom() {
   for (const id of DOM_IDS) dom[id] = document.getElementById(id);
 }
 
-/** Shared orbit center: slightly right of geometric center (left panel); scales with viewport (~887,439 near 1600×900). */
 export function defaultSharedCenter(W, H) {
   return {
-    x: Math.round(W * 0.5544),
-    y: Math.round(H * 0.4878),
+    x: Math.round(W / 2),
+    y: Math.round(H / 2),
   };
 }
 

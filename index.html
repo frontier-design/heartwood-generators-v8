@@ -16,17 +16,11 @@
 
 <body>
 
-  <!-- Hidden SVG holding the metaballs gooey filter. Referenced from canvas
-       via ctx.filter = "url(#metaballFilter)". The matrix below thresholds
-       only the alpha channel, so blob edges snap hard while RGB stays as
-       drawn (no color shifts when toggling metaballs). -->
-  <svg width="0" height="0" style="position:absolute;left:-9999px;top:-9999px"
-    aria-hidden="true">
+  <svg width="0" height="0" style="position:absolute;left:-9999px;top:-9999px" aria-hidden="true">
     <defs>
       <filter id="metaballFilter" color-interpolation-filters="sRGB">
         <feGaussianBlur in="SourceGraphic" stdDeviation="3" result="blur" />
-        <feColorMatrix in="blur" type="matrix"
-          values="1 0 0 0 0  0 1 0 0 0  0 0 1 0 0  0 0 0 19 -9" result="goo" />
+        <feColorMatrix in="blur" type="matrix" values="1 0 0 0 0  0 1 0 0 0  0 0 1 0 0  0 0 0 19 -9" result="goo" />
         <feComposite in="SourceGraphic" in2="goo" operator="atop" />
       </filter>
     </defs>
@@ -45,24 +39,16 @@
   <!-- PANEL (floating overlay) -->
   <div class="panel" id="panel">
 
-    <!-- CANVAS -->
+    <!-- COLOR -->
     <div class="section">
       <div class="section-header" onclick="toggleSection(this)">
-        <span class="section-title">Canvas</span><span class="section-arrow open" aria-hidden="true"></span>
+        <span class="section-title">Color</span><span class="section-arrow open" aria-hidden="true"></span>
       </div>
       <div class="section-body open">
-        <div class="row"><label>Background</label></div>
-        <div class="swatch-grid-preset" id="bgSwatches"></div>
-        <div class="swatch-custom-block">
-          <span class="swatch-custom-label">Custom</span>
-          <div class="swatch-custom-field">
-            <input type="color" id="bgColor" class="swatch-color-input" value="#f9f9f9"
-              oninput="selectBgColor(this.value)">
-            <span class="swatch-hex" id="bgHex">#f9f9f9</span>
-          </div>
-        </div>
-        <div class="row row-offset"><label>BG Grain</label><input type="range" id="bgGrain" min="0"
-            max="100" value="20" oninput="syncVal(this,'bgGrainV')"><span class="val" id="bgGrainV">20</span></div>
+        <div class="combo-grid" id="comboSwatches"></div>
+        <!-- Hidden inputs read by the drawing engine -->
+        <input type="hidden" id="bgColor" value="#f9f9f9">
+        <input type="hidden" id="dotColor" value="#5696c2">
       </div>
     </div>
 
@@ -72,27 +58,19 @@
         <span class="section-title">Dots</span><span class="section-arrow" aria-hidden="true"></span>
       </div>
       <div class="section-body">
-        <div class="row"><label>Dot Color</label></div>
-        <div class="swatch-grid-preset" id="dotSwatches"></div>
-        <div class="swatch-custom-block">
-          <span class="swatch-custom-label">Custom</span>
-          <div class="swatch-custom-field">
-            <input type="color" id="dotColor" class="swatch-color-input" value="#212121"
-              oninput="selectDotColor(this.value)">
-            <span class="swatch-hex" id="dotHex">#212121</span>
-          </div>
-        </div>
-        <div class="row row-offset"><label>Dot Size</label><input type="range" id="dotSize" min="1"
-            max="20" value="10" oninput="syncVal(this,'dotSizeV')"><span class="val" id="dotSizeV">10</span></div>
-        <div class="row"><label>Edge Blur</label><input type="range" id="dotBlur" min="0"
-            max="100" value="20" oninput="syncVal(this,'dotBlurV')"><span class="val" id="dotBlurV">20</span></div>
-        <div class="row"><label>Dot Grain</label><input type="range" id="dotGrain" min="0"
-            max="100" value="55" oninput="syncVal(this,'dotGrainV')"><span class="val" id="dotGrainV">55</span></div>
+        <div class="row"><label>Dot Size</label><input type="range" id="dotSize" min="1" max="20" value="10"
+            oninput="syncVal(this,'dotSizeV')"><span class="val" id="dotSizeV">10</span></div>
+        <div class="row"><label>Edge Blur</label><input type="range" id="dotBlur" min="0" max="100" value="20"
+            oninput="syncVal(this,'dotBlurV')"><span class="val" id="dotBlurV">20</span></div>
+        <div class="row"><label>BG Grain</label><input type="range" id="bgGrain" min="0" max="100" value="20"
+            oninput="syncVal(this,'bgGrainV')"><span class="val" id="bgGrainV">20</span></div>
+        <div class="row"><label>Dot Grain</label><input type="range" id="dotGrain" min="0" max="100" value="55"
+            oninput="syncVal(this,'dotGrainV')"><span class="val" id="dotGrainV">55</span></div>
         <div class="row row-offset"><label for="metaballs">Metaballs</label>
           <input type="checkbox" id="metaballs" onchange="onMetaballsToggle()">
         </div>
-        <div class="row"><label>Merge</label><input type="range" id="metaballMerge" min="1"
-            max="5" value="3" oninput="syncVal(this,'metaballMergeV')"><span class="val" id="metaballMergeV">3</span></div>
+        <div class="row"><label>Merge</label><input type="range" id="metaballMerge" min="1" max="5" value="3"
+            oninput="syncVal(this,'metaballMergeV')"><span class="val" id="metaballMergeV">3</span></div>
       </div>
     </div>
 

@@ -9,32 +9,31 @@ export const render = {
   grainCanvas: null,
   grainOffset: 0,
   metaballFilterBlur: null,
+  metaballCanvas: null,
+  dotMaskCanvas: null,
+  grainScratchCanvas: null,
 };
 
-export let metaballCanvas = null;
-export let dotMaskCanvas = null;
-export let grainScratchCanvas = null;
-
 export function ensureDotMaskCanvas() {
-  if (!dotMaskCanvas) {
-    dotMaskCanvas = document.createElement("canvas");
-    dotMaskCtx = dotMaskCanvas.getContext("2d");
+  if (!render.dotMaskCanvas) {
+    render.dotMaskCanvas = document.createElement("canvas");
+    dotMaskCtx = render.dotMaskCanvas.getContext("2d");
   }
-  if (dotMaskCanvas.width !== state.W || dotMaskCanvas.height !== state.H) {
-    dotMaskCanvas.width = state.W;
-    dotMaskCanvas.height = state.H;
+  if (render.dotMaskCanvas.width !== state.W || render.dotMaskCanvas.height !== state.H) {
+    render.dotMaskCanvas.width = state.W;
+    render.dotMaskCanvas.height = state.H;
   }
   return dotMaskCtx;
 }
 
 export function ensureGrainScratchCanvas() {
-  if (!grainScratchCanvas) {
-    grainScratchCanvas = document.createElement("canvas");
-    grainScratchCtx = grainScratchCanvas.getContext("2d");
+  if (!render.grainScratchCanvas) {
+    render.grainScratchCanvas = document.createElement("canvas");
+    grainScratchCtx = render.grainScratchCanvas.getContext("2d");
   }
-  if (grainScratchCanvas.width !== state.W || grainScratchCanvas.height !== state.H) {
-    grainScratchCanvas.width = state.W;
-    grainScratchCanvas.height = state.H;
+  if (render.grainScratchCanvas.width !== state.W || render.grainScratchCanvas.height !== state.H) {
+    render.grainScratchCanvas.width = state.W;
+    render.grainScratchCanvas.height = state.H;
   }
   return grainScratchCtx;
 }
@@ -51,13 +50,13 @@ export function tileGrain(ctx2, offset) {
 }
 
 export function ensureMetaballCanvas() {
-  if (!metaballCanvas) {
-    metaballCanvas = document.createElement("canvas");
-    metaballCtx = metaballCanvas.getContext("2d");
+  if (!render.metaballCanvas) {
+    render.metaballCanvas = document.createElement("canvas");
+    metaballCtx = render.metaballCanvas.getContext("2d");
   }
-  if (metaballCanvas.width !== state.W || metaballCanvas.height !== state.H) {
-    metaballCanvas.width = state.W;
-    metaballCanvas.height = state.H;
+  if (render.metaballCanvas.width !== state.W || render.metaballCanvas.height !== state.H) {
+    render.metaballCanvas.width = state.W;
+    render.metaballCanvas.height = state.H;
   }
   return metaballCtx;
 }

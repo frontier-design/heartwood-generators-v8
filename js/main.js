@@ -1,6 +1,6 @@
 import { kickLoop, redrawAll, regenField, syncVal, onMetaballsToggle, randomizeField } from './core.js';
 import { setMode, toggleSection, onSharedCenterChange, initInteractionListeners } from './interaction.js';
-import { selectBgColor, selectDotColor } from './swatches.js';
+import { selectCombo } from './swatches.js';
 import { switchDataTab, parsePastedCSV, recalcDots, initDataListeners } from './data.js';
 import { addOrbit, reshuffleAll } from './orbit-ui.js';
 import { exportSVG, exportPNG } from './export.js';
@@ -10,8 +10,7 @@ import { sketch } from './sketch.js';
 window.setMode = setMode;
 window.toggleSection = toggleSection;
 window.onSharedCenterChange = onSharedCenterChange;
-window.selectBgColor = selectBgColor;
-window.selectDotColor = selectDotColor;
+window.selectCombo = selectCombo;
 window.syncVal = syncVal;
 window.onMetaballsToggle = onMetaballsToggle;
 window.regenField = regenField;
