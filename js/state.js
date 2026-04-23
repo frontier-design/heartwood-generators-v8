@@ -23,6 +23,7 @@ export const state = {
   W: 0,
   H: 0,
   orbits: [],
+  scattered: true,
 };
 
 export const dom = {};
@@ -132,4 +133,4 @@ function cubicBezier(x1, y1, x2, y2) {
   };
 }
 
-export const ease = cubicBezier(0, 0.994, 0.68, 1);
+export const ease = cubicBezier(0.16, 1, 0.3, 1);

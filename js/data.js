@@ -251,13 +251,6 @@ function applyCSVText(text, showStatus) {
 }
 
 export function initDataListeners() {
-  document.getElementById("fieldEnabled").addEventListener("change", function () {
-    document.getElementById("fieldControls").style.opacity = this.checked
-      ? "1"
-      : "0.4";
-    regenField();
-  });
-
   document.getElementById("csvFile").addEventListener("change", function () {
     const file = this.files[0];
     if (!file) return;

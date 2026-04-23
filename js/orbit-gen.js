@@ -1,4 +1,64 @@
-import { state, dom, seededRand } from './state.js';
+import { state, dom, seededRand, ANIM_DURATION_MS } from './state.js';
+
+function nowMs() {
+  return state.p5ref ? state.p5ref.millis() : 0;
+}
+
+// Ensure older dots (created before scale animation existed) have the fields.
+export function ensureDotAnimFields(d) {
+  if (d.scale == null) {
+    d.scale = 1;
+    d.scaleFrom = 1;
+    d.scaleTo = 1;
+    d.scaleT0 = 0;
+    d.scaleDur = 0;
+  }
+  if (d.dying == null) d.dying = false;
+}
+
+function spawnFadingDot(tx, ty) {
+  const now = nowMs();
+  const nx = Math.random() * state.W;
+  const ny = Math.random() * state.H;
+  const hasTarget = tx != null && ty != null;
+  return {
+    x: nx,
+    y: ny,
+    sx: nx,
+    sy: ny,
+    tx: hasTarget ? tx : nx,
+    ty: hasTarget ? ty : ny,
+    animStart: hasTarget ? now : 0,
+    scale: 0,
+    scaleFrom: 0,
+    scaleTo: 1,
+    scaleT0: now,
+    scaleDur: ANIM_DURATION_MS,
+    dying: false,
+  };
+}
+
+function markDying(d) {
+  if (d.dying) return;
+  const now = nowMs();
+  ensureDotAnimFields(d);
+  d.dying = true;
+  d.scaleFrom = d.scale;
+  d.scaleTo = 0;
+  d.scaleT0 = now;
+  d.scaleDur = ANIM_DURATION_MS;
+}
+
+// Bring a dying dot back to life so rapid slider scrubs don't produce
+// overlapping shrink/grow pairs in the same region.
+function reviveDot(d) {
+  const now = nowMs();
+  d.dying = false;
+  d.scaleFrom = d.scale;
+  d.scaleTo = 1;
+  d.scaleT0 = now;
+  d.scaleDur = ANIM_DURATION_MS;
+}
 
 export function getCenter(orb) {
   if (dom.sharedCenter.checked || orb.cx === null) {
@@ -72,22 +132,49 @@ export function generateOrbitDots(orb) {
 }
 
 export function retargetDots(arr, targets, rand) {
-  const now = state.p5ref ? state.p5ref.millis() : 0;
-  while (arr.length < targets.length) {
-    const nx = rand() * state.W,
-      ny = rand() * state.H;
-    arr.push({
-      x: nx, y: ny,
-      sx: nx, sy: ny,
-      tx: nx, ty: ny,
-      animStart: 0,
-    });
+  const now = nowMs();
+  for (const d of arr) ensureDotAnimFields(d);
+
+  const active = arr.filter((d) => !d.dying);
+  const want = targets.length;
+  const current = active.length;
+
+  if (want < current) {
+    // Fade out the tail of the active dots. They remain in `arr` until the
+    // scale animation completes, at which point the draw loop reaps them.
+    const kill = current - want;
+    for (let i = current - kill; i < current; i++) {
+      markDying(active[i]);
+    }
+  } else if (want > current) {
+    let need = want - current;
+    // First, revive the most recently-killed dying dots so rapid scrubs
+    // feel like a single continuous tween instead of overlapping spawns.
+    for (let i = arr.length - 1; i >= 0 && need > 0; i--) {
+      if (arr[i].dying) {
+        reviveDot(arr[i]);
+        need--;
+      }
+    }
+    // Spawn any still-needed dots at random positions; they ease to their
+    // targets while simultaneously fading in from scale 0.
+    if (need > 0) {
+      const startIdx = want - need;
+      for (let k = startIdx; k < want; k++) {
+        const t = targets[k];
+        arr.push(spawnFadingDot(t.x, t.y));
+      }
+    }
   }
-  arr.length = targets.length;
-  for (let i = 0; i < targets.length; i++) {
-    const d = arr[i];
-    const tx = targets[i].x,
-      ty = targets[i].y;
+
+  // Retarget the still-alive dots to the new layout. In-flight fade-in
+  // animations are preserved so repeated slider changes keep flowing.
+  const alive = arr.filter((d) => !d.dying);
+  const len = Math.min(alive.length, want);
+  for (let i = 0; i < len; i++) {
+    const d = alive[i];
+    const tx = targets[i].x;
+    const ty = targets[i].y;
     if (Math.abs(d.tx - tx) > 0.5 || Math.abs(d.ty - ty) > 0.5) {
       d.sx = d.x;
       d.sy = d.y;
@@ -105,4 +192,45 @@ export function syncOrbitDots(orb) {
 
 export function syncAllOrbits() {
   state.orbits.forEach((orb) => syncOrbitDots(orb));
+}
+
+const INITIAL_DOT_COUNT = 30;
+
+export function spawnScatteredDots() {
+  const total = state.orbits.reduce((s, o) => s + o.dotCount, 0);
+  for (const orb of state.orbits) {
+    // Distribute the initial 30 proportionally across orbits
+    const n = total > 0
+      ? Math.max(1, Math.round((orb.dotCount / total) * INITIAL_DOT_COUNT))
+      : Math.round(INITIAL_DOT_COUNT / state.orbits.length);
+    orb.dots.length = 0;
+    for (let i = 0; i < n; i++) {
+      orb.dots.push(spawnFadingDot());
+    }
+  }
+}
+
+export function resizeScatteredDots() {
+  for (const orb of state.orbits) {
+    for (const d of orb.dots) ensureDotAnimFields(d);
+    const active = orb.dots.filter((d) => !d.dying);
+    const want = orb.dotCount;
+    if (active.length < want) {
+      let need = want - active.length;
+      for (let i = orb.dots.length - 1; i >= 0 && need > 0; i--) {
+        if (orb.dots[i].dying) {
+          reviveDot(orb.dots[i]);
+          need--;
+        }
+      }
+      for (let i = 0; i < need; i++) {
+        orb.dots.push(spawnFadingDot());
+      }
+    } else if (active.length > want) {
+      const kill = active.length - want;
+      for (let i = active.length - kill; i < active.length; i++) {
+        markDying(active[i]);
+      }
+    }
+  }
 }

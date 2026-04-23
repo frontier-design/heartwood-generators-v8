@@ -17,7 +17,7 @@ import {
 } from "./rendering.js";
 import { getCenter, logOrbitCenters } from "./orbit-gen.js";
 import { regenField, kickLoop, init } from "./core.js";
-import { syncAllOrbits } from "./orbit-gen.js";
+import { syncAllOrbits, spawnScatteredDots } from "./orbit-gen.js";
 import { setupCanvasListeners } from "./interaction.js";
 
 export const sketch = (p) => {
@@ -59,7 +59,7 @@ export const sketch = (p) => {
 
     p.background(bg);
 
-    if (showGuides) {
+    if (showGuides && !state.scattered) {
       p.push();
       p.noFill();
       p.stroke(0, 24);
@@ -77,18 +77,38 @@ export const sketch = (p) => {
     let animating = false;
 
     const stepDot = (d) => {
-      if (d.animStart <= 0) return;
-      const elapsed = nowMs - d.animStart;
-      if (elapsed >= ANIM_DURATION_MS) {
-        d.x = d.tx;
-        d.y = d.ty;
-        d.animStart = 0;
-        return;
+      if (d.animStart > 0) {
+        const elapsed = nowMs - d.animStart;
+        if (elapsed >= ANIM_DURATION_MS) {
+          d.x = d.tx;
+          d.y = d.ty;
+          d.animStart = 0;
+        } else {
+          const e = ease(elapsed / ANIM_DURATION_MS);
+          d.x = d.sx + (d.tx - d.sx) * e;
+          d.y = d.sy + (d.ty - d.sy) * e;
+          animating = true;
+        }
       }
-      const e = ease(elapsed / ANIM_DURATION_MS);
-      d.x = d.sx + (d.tx - d.sx) * e;
-      d.y = d.sy + (d.ty - d.sy) * e;
-      animating = true;
+      if (d.scale == null) {
+        d.scale = 1;
+        d.scaleDur = 0;
+        d.scaleFrom = 1;
+        d.scaleTo = 1;
+        d.scaleT0 = 0;
+        d.dying = false;
+      }
+      if (d.scaleDur > 0) {
+        const se = nowMs - d.scaleT0;
+        if (se >= d.scaleDur) {
+          d.scale = d.scaleTo;
+          d.scaleDur = 0;
+        } else if (se > 0) {
+          const ee = ease(se / d.scaleDur);
+          d.scale = d.scaleFrom + (d.scaleTo - d.scaleFrom) * ee;
+          animating = true;
+        }
+      }
     };
 
     const ctx = p.drawingContext;
@@ -132,10 +152,13 @@ export const sketch = (p) => {
       const oy = Math.cos(t * 0.3 + fi * 2.3) * drift;
       const dx = d.x + ox;
       const dy = d.y + oy;
+      const s = d.scale != null ? d.scale : 1;
+      if (s <= 0.001) continue;
+      const rs = r * s;
 
       if (metaballsOn) {
-        mctx.moveTo(dx + r, dy);
-        mctx.arc(dx, dy, r, 0, Math.PI * 2);
+        mctx.moveTo(dx + rs, dy);
+        mctx.arc(dx, dy, rs, 0, Math.PI * 2);
       } else {
         if (fieldMode) {
           p.noFill();
@@ -144,15 +167,21 @@ export const sketch = (p) => {
           p.circle(dx, dy, dotD + 6);
           p.noStroke();
         }
-        ctx.drawImage(
-          fieldSprite.canvas,
-          dx - fieldSprite.half,
-          dy - fieldSprite.half,
-        );
+        if (s >= 0.999) {
+          ctx.drawImage(
+            fieldSprite.canvas,
+            dx - fieldSprite.half,
+            dy - fieldSprite.half,
+          );
+        } else {
+          const sz = fieldSprite.size * s;
+          const half = sz * 0.5;
+          ctx.drawImage(fieldSprite.canvas, dx - half, dy - half, sz, sz);
+        }
       }
       if (needsMask) {
-        maskCtx.moveTo(dx + r, dy);
-        maskCtx.arc(dx, dy, r, 0, Math.PI * 2);
+        maskCtx.moveTo(dx + rs, dy);
+        maskCtx.arc(dx, dy, rs, 0, Math.PI * 2);
       }
     }
     if (metaballsOn) mctx.fill();
@@ -168,23 +197,41 @@ export const sketch = (p) => {
       for (let j = 0; j < orb.dots.length; j++) {
         const d = orb.dots[j];
         stepDot(d);
+        const s = d.scale != null ? d.scale : 1;
+        if (s <= 0.001) {
+          di++;
+          continue;
+        }
         const ox = Math.sin(t * 0.5 + di * 1.3) * drift;
         const oy = Math.cos(t * 0.35 + di * 1.9) * drift;
         const dx = d.x + ox;
         const dy = d.y + oy;
+        const rs = r * s;
         if (metaballsOn) {
-          mctx.moveTo(dx + r, dy);
-          mctx.arc(dx, dy, r, 0, Math.PI * 2);
-        } else {
+          mctx.moveTo(dx + rs, dy);
+          mctx.arc(dx, dy, rs, 0, Math.PI * 2);
+        } else if (s >= 0.999) {
           ctx.drawImage(sprite.canvas, dx - sprite.half, dy - sprite.half);
+        } else {
+          const sz = sprite.size * s;
+          const half = sz * 0.5;
+          ctx.drawImage(sprite.canvas, dx - half, dy - half, sz, sz);
         }
         if (needsMask) {
-          maskCtx.moveTo(dx + r, dy);
-          maskCtx.arc(dx, dy, r, 0, Math.PI * 2);
+          maskCtx.moveTo(dx + rs, dy);
+          maskCtx.arc(dx, dy, rs, 0, Math.PI * 2);
         }
         di++;
       }
       if (metaballsOn) mctx.fill();
+
+      // Reap dots that have finished fading out.
+      for (let k = orb.dots.length - 1; k >= 0; k--) {
+        const dd = orb.dots[k];
+        if (dd.dying && dd.scaleDur === 0 && dd.scale <= 0.001) {
+          orb.dots.splice(k, 1);
+        }
+      }
     }
 
     if (needsMask) maskCtx.fill();
@@ -256,7 +303,11 @@ export const sketch = (p) => {
     dom.centerX.value = String(c.x);
     dom.centerY.value = String(c.y);
     regenField();
-    syncAllOrbits();
+    if (state.scattered) {
+      spawnScatteredDots();
+    } else {
+      syncAllOrbits();
+    }
     kickLoop();
   };
 };

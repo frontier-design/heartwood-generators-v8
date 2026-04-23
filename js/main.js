@@ -1,4 +1,4 @@
-import { kickLoop, redrawAll, regenField, syncVal, onMetaballsToggle, randomizeField } from './core.js';
+import { kickLoop, redrawAll, regenField, syncVal, onMetaballsToggle, randomizeField, goAnimate, freeForAll } from './core.js';
 import { setMode, toggleSection, onSharedCenterChange, initInteractionListeners } from './interaction.js';
 import { selectCombo } from './swatches.js';
 import { switchDataTab, parsePastedCSV, recalcDots, applyPreset, initDataListeners } from './data.js';
@@ -25,6 +25,8 @@ window.reshuffleAll = reshuffleAll;
 window.exportSVG = exportSVG;
 window.exportPNG = exportPNG;
 window.applyPreset = applyPreset;
+window.goAnimate = goAnimate;
+window.freeForAll = freeForAll;
 
 // Initialize event listeners
 initInteractionListeners();
