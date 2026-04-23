@@ -1,0 +1,92 @@
+// Shared mutable state, constants, and utility functions
+
+export function randSeed() {
+  return Math.floor(Math.random() * 99999) + 1;
+}
+
+export function seededRand(s) {
+  let v = s;
+  return () => {
+    v = (v * 9301 + 49297) % 233280;
+    return v / 233280;
+  };
+}
+
+export const state = {
+  p5ref: null,
+  mode: "view",
+  globalSeed: randSeed(),
+  fieldDots: [],
+  dragDot: null,
+  dragOffX: 0,
+  dragOffY: 0,
+  W: 0,
+  H: 0,
+  orbits: [],
+};
+
+export const dom = {};
+export const DOM_IDS = [
+  "bgColor", "bgHex", "dotColor", "dotHex", "dotSize", "dotBlur",
+  "bgGrain", "dotGrain", "metaballs", "metaballMerge", "showGuides",
+  "fieldEnabled", "fieldDensity", "fieldControls", "sharedCenter",
+  "sharedCenterRow", "centerX", "centerY", "dotBudget", "csvPaste",
+  "csvFile", "csvStatus", "dsTotalVal", "dsOrbitCount", "dataSummary",
+  "panel", "modeBar", "exportDock", "manualRows", "orbitList",
+  "orbitCount", "bgSwatches", "dotSwatches",
+];
+
+export function cacheDom() {
+  for (const id of DOM_IDS) dom[id] = document.getElementById(id);
+}
+
+export function defaultOrbit(i) {
+  return {
+    id: i,
+    label: `Orbit ${i + 1}`,
+    dataValue: 0,
+    dotCount: 20,
+    useData: false,
+    radius: 70 + i * 90,
+    cx: null,
+    cy: null,
+    clumpCount: 3,
+    clumpSize: 28,
+    clumpGap: 12,
+    ringPull: 86,
+    color: null,
+    open: false,
+    seed: randSeed(),
+    dots: [],
+  };
+}
+
+// ── EASING ──
+export const ANIM_DURATION_MS = 1167;
+
+function cubicBezier(x1, y1, x2, y2) {
+  return function (t) {
+    if (t <= 0) return 0;
+    if (t >= 1) return 1;
+    let u = t;
+    for (let i = 0; i < 8; i++) {
+      const bx =
+        3 * (1 - u) * (1 - u) * u * x1 +
+        3 * (1 - u) * u * u * x2 +
+        u * u * u -
+        t;
+      if (Math.abs(bx) < 0.001) break;
+      const dx =
+        3 * (1 - u) * (1 - u) * x1 +
+        6 * (1 - u) * u * (x2 - x1) +
+        3 * u * u * (1 - x2);
+      if (Math.abs(dx) < 1e-6) break;
+      u -= bx / dx;
+    }
+    return (
+      3 * (1 - u) * (1 - u) * u * y1 + 3 * (1 - u) * u * u * y2 + u * u * u
+    );
+  };
+}
+
+export const ease = cubicBezier(0, 0.994, 0.68, 1);

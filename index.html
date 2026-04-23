@@ -5,6 +5,12 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Dot Orbit Generator</title>
+  <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fontsource/geist-sans@5.2.5/400.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fontsource/geist-sans@5.2.5/500.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fontsource/geist-sans@5.2.5/600.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fontsource/geist-mono@5.2.5/400.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fontsource/geist-mono@5.2.5/500.css">
   <link rel="stylesheet" href="styles.css">
 </head>
 
@@ -46,16 +52,24 @@
       </div>
       <div class="section-body open">
         <div class="row"><label>Background</label></div>
-        <div class="swatch-row swatch-grid-two-row" id="bgSwatches"></div>
-        <div class="row swatch-custom-row">
-          <input type="color" id="bgColor" value="#f9f9f9" oninput="selectBgColor(this.value)">
-          <span class="swatch-hex" id="bgHex">#f9f9f9</span>
+        <div class="swatch-grid-preset" id="bgSwatches"></div>
+        <div class="swatch-custom-block">
+          <span class="swatch-custom-label">Custom</span>
+          <div class="swatch-custom-field">
+            <input type="color" id="bgColor" class="swatch-color-input" value="#f9f9f9"
+              oninput="selectBgColor(this.value)">
+            <span class="swatch-hex" id="bgHex">#f9f9f9</span>
+          </div>
         </div>
         <div class="row row-offset"><label>Dot Color</label></div>
-        <div class="swatch-row swatch-grid-two-row" id="dotSwatches"></div>
-        <div class="row swatch-custom-row">
-          <input type="color" id="dotColor" value="#212121" oninput="selectDotColor(this.value)">
-          <span class="swatch-hex" id="dotHex">#212121</span>
+        <div class="swatch-grid-preset" id="dotSwatches"></div>
+        <div class="swatch-custom-block">
+          <span class="swatch-custom-label">Custom</span>
+          <div class="swatch-custom-field">
+            <input type="color" id="dotColor" class="swatch-color-input" value="#212121"
+              oninput="selectDotColor(this.value)">
+            <span class="swatch-hex" id="dotHex">#212121</span>
+          </div>
         </div>
         <div class="row row-offset"><label>Dot Size</label><input type="range" id="dotSize" min="1"
             max="14" value="5" oninput="syncVal(this,'dotSizeV')"><span class="val" id="dotSizeV">5</span></div>
@@ -90,7 +104,7 @@
             <span class="val" id="fieldDensityV">30</span>
           </div>
           <div class="btn-row">
-            <button onclick="globalSeed=randSeed();regenField()">Randomize</button>
+            <button onclick="randomizeField()">Randomize</button>
           </div>
         </div>
       </div>
@@ -168,12 +182,12 @@
 
   <!-- EXPORT DOCK (bottom-right) -->
   <div class="export-dock" id="exportDock">
-    <button class="export-btn export-primary" onclick="exportSVG()">Save SVG</button>
+    <button class="export-btn" onclick="exportSVG()">Save SVG</button>
     <button class="export-btn" onclick="exportPNG()">Save PNG</button>
   </div>
 
   <script src="https://cdn.jsdelivr.net/npm/p5@1.9.0/lib/p5.min.js"></script>
-  <script src="script.js"></script>
+  <script type="module" src="js/main.js"></script>
 </body>
 
 </html>
